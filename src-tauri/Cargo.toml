@@ -63,3 +63,7 @@ windows-sys = "0.61"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
+
+
+[patch.crates-io]
+wry = { path = "../vendor/wry" }
