@@ -68,7 +68,24 @@ async fn main() {
 		std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
 	}
 
-	let app = match Builder::default()
+	// webkit2gtk 2.46+ breaks tauri:// custom schemes on Arch/SteamOS.
+	// Serve embedded UI over loopback HTTP instead (Linux only).
+	#[cfg(target_os = "linux")]
+	let ui_port: u16 = portpicker::pick_unused_port().unwrap_or(14725);
+
+	#[allow(unused_mut)]
+	let mut builder = Builder::default();
+
+	#[cfg(target_os = "linux")]
+	{
+		builder = builder.plugin(
+			tauri_plugin_localhost::Builder::new(ui_port)
+				.host("127.0.0.1")
+				.build(),
+		);
+	}
+
+	let app = match builder
 		.invoke_handler(tauri::generate_handler![
 			frontend::restart,
 			frontend::get_devices,
@@ -108,8 +125,35 @@ async fn main() {
 			frontend::settings::backup_config_directory,
 			frontend::settings::restore_config_directory,
 		])
-		.setup(|app| {
+		.setup({
+			#[cfg(target_os = "linux")]
+			let ui_port = ui_port;
+			move |app| {
 			APP_HANDLE.set(app.handle().clone()).unwrap();
+
+			#[cfg(target_os = "linux")]
+			{
+				use tauri::Manager;
+				// Give tiny_http a tick to bind before navigating.
+				std::thread::sleep(std::time::Duration::from_millis(50));
+				if let Some(window) = app.get_webview_window("main") {
+					let url = format!("http://127.0.0.1:{ui_port}/index.html");
+					match url.parse() {
+						Ok(parsed) => {
+							if let Err(error) = window.navigate(parsed) {
+								log::error!("Failed to navigate UI to localhost server: {error}");
+							} else {
+								log::info!("Serving LinuxDeck UI at {url}");
+							}
+						}
+						Err(error) => log::error!("Invalid UI URL {url}: {error}"),
+					}
+					if !std::env::args().any(|v| v == "--hide") {
+						let _ = window.show();
+						let _ = window.set_focus();
+					}
+				}
+			}
 
 			#[cfg(windows)]
 			if !std::env::args().any(|v| v == "--hide") {
@@ -290,12 +334,13 @@ If you have already donated, thank you so much for your support!"#,
 			}
 
 			Ok(())
+			}
 		})
 		.plugin(
 			tauri_plugin_log::Builder::default()
 				.targets([Target::new(TargetKind::LogDir { file_name: None }), Target::new(TargetKind::Stdout)])
 				.level(log::LevelFilter::Info)
-				.level_for("opendeck", log::LevelFilter::Debug)
+				.level_for("linuxdeck", log::LevelFilter::Debug)
 				.build(),
 		)
 		.plugin(tauri_plugin_cors_fetch::init())
@@ -361,7 +406,7 @@ If you have already donated, thank you so much for your support!"#,
 						let _ = show_window(app);
 					}
 				})
-				.dbus_id("me.amankhanna.opendeck")
+				.dbus_id("linuxdeck")
 				.build(),
 		)
 		.plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec!["--hide"])))

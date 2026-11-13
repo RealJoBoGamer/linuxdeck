@@ -58,16 +58,16 @@ Binary output is under `src-tauri/target/release/linuxdeck` (and bundle artifact
 
 ### White window: `Could not connect to localhost: Connection refused`
 
-Caused by webkit2gtk **2.46+** bypassing Tauri’s `tauri://` custom scheme (common on Arch / SteamOS Distrobox). LinuxDeck vendors a patched `wry` that marks custom schemes CORS-enabled so the embedded UI loads.
+Caused by webkit2gtk **2.46+** breaking Tauri’s `tauri://` custom scheme (Arch / SteamOS Distrobox). LinuxDeck serves the UI over `http://127.0.0.1:<port>` instead, and also vendors a patched `wry`.
 
-Rebuild after pull:
+Kill old processes, then relaunch the rebuilt binary:
 
 ```bash
-distrobox enter archbuild -- bash -lc 'cd /home/deck/linuxdeck && deno task tauri build'
+pkill -f target/release/linuxdeck || true
 /home/deck/linuxdeck/scripts/run-linuxdeck.sh
 ```
 
-Do **not** use the AppImage on SteamOS (glibc mismatch). Prefer the Distrobox release binary via `scripts/run-linuxdeck.sh`.
+Do **not** use the AppImage on SteamOS (glibc mismatch).
 
 ## Official Elgato plugins on Linux
 

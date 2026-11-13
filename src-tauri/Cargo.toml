@@ -38,6 +38,8 @@ tauri-plugin-single-instance = { version = "2.4", features = ["deep-link"] }
 tauri-plugin-autostart = "2.5"
 tauri-plugin-dialog = "=2.6.0"
 tauri-plugin-deep-link = "=2.4.7"
+tauri-plugin-localhost = "2.4"
+portpicker = "0.1"
 serde-inline-default = "1.0"
 serde_with = "3.16"
 json-patch = "4.1"
