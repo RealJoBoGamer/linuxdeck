@@ -214,12 +214,13 @@
 		<div class="flex flex-row items-center mt-4 text-sm text-neutral-400">
 			<span class="mr-1">
 				{$t("settings.footer.1")}
-				<button on:click={() => invoke("open_url", { url: "https://github.com/nekename/OpenDeck" })} class="underline">{$t("settings.footer.2")}</button>
+				<button on:click={() => invoke("open_url", { url: "https://github.com/RealJoBoGamer/linuxdeck" })} class="underline">{$t("settings.footer.2")}</button>
 			</span>
 			<Star weight="fill" fill="yellow" />
 			<span class="mx-1">
 				{$t("settings.footer.3")}
 				<button on:click={() => invoke("open_url", { url: "https://github.com/sponsors/nekename" })} class="underline">{$t("settings.footer.4")}</button>
+				(OpenDeck)
 			</span>
 			<Heart weight="fill" fill="fuchsia" />
 			<span class="ml-1">{$t("settings.footer.5")}</span>

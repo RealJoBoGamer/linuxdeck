@@ -182,16 +182,12 @@ If you have already donated, thank you so much for your support!"#,
 				_ => {}
 			}
 
-			use tauri_plugin_aptabase::{Builder, EventTracker, InitOptions};
-			app.handle().plugin(
-				Builder::new(if settings.value.statistics { "A-SH-3841489320" } else { "" })
-					.with_options(InitOptions {
-						host: Some("https://aptabase.amankhanna.me".to_owned()),
-						flush_interval: None,
-					})
-					.build(),
-			)?;
-			let _ = app.track_event("app_started", None);
+			// LinuxDeck fork: do not send telemetry to upstream Aptabase by default.
+			if settings.value.statistics {
+				log::info!("Statistics enabled in settings, but LinuxDeck does not phone home yet");
+			}
+
+			shared::maybe_migrate_opendeck_config();
 
 			tokio::spawn(async {
 				loop {
@@ -224,7 +220,7 @@ If you have already donated, thank you so much for your support!"#,
 			let quit = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
 			let separator = PredefinedMenuItem::separator(app)?;
 			let menu = MenuBuilder::new(app).items(&[&label, &separator, &show, &hide, &separator, &restart, &quit]).build()?;
-			let _tray = TrayIconBuilder::with_id("opendeck")
+			let _tray = TrayIconBuilder::with_id("linuxdeck")
 				.menu(&menu)
 				.icon(app.default_window_icon().unwrap().clone())
 				.show_menu_on_left_click(false)
@@ -389,7 +385,7 @@ If you have already donated, thank you so much for your support!"#,
 		Err(error) => panic!("failed to build Tauri application: {}", error),
 	};
 
-	app.run(|app, event| {
+	app.run(|_app, event| {
 		if let tauri::RunEvent::Exit = event {
 			futures::executor::block_on(async {
 				let device_ids = shared::DEVICES.iter().filter(|entry| !entry.id.starts_with("sd-")).map(|entry| entry.id.clone()).collect::<Vec<_>>();
@@ -411,8 +407,6 @@ If you have already donated, thank you so much for your support!"#,
 			}
 
 			tokio::spawn(elgato::reset_devices());
-			use tauri_plugin_aptabase::EventTracker;
-			app.flush_events_blocking();
 		}
 	});
 }

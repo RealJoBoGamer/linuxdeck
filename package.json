@@ -1,9 +1,9 @@
 {
-	"name": "opendeck",
-	"description": "Use stream controllers",
-	"author": "Aman Khanna (nekename)",
+	"name": "linuxdeck",
+	"description": "Linux-native Stream Deck host based on OpenDeck",
+	"author": "RealJoBoGamer (fork); original OpenDeck by Aman Khanna (nekename)",
 	"license": "GPL-3.0-or-later",
-	"repository": "https://github.com/nekename/OpenDeck",
+	"repository": "https://github.com/RealJoBoGamer/linuxdeck",
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",

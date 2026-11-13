@@ -55,10 +55,11 @@ pub fn open_log_directory() -> Result<(), Error> {
 
 #[command]
 pub fn get_build_info() -> String {
+	let os = os_info::get();
 	format!(
 		r#"
 		<details>
-			<summary> {} v{} ({}) on {} </summary>
+			<summary> {} v{} ({}) on {} / {} {} </summary>
 			{}
 		</details>
 		"#,
@@ -66,6 +67,8 @@ pub fn get_build_info() -> String {
 		built_info::PKG_VERSION,
 		built_info::GIT_COMMIT_HASH_SHORT.unwrap_or("commit hash unknown"),
 		built_info::TARGET,
+		os.os_type(),
+		os.version(),
 		built_info::DIRECT_DEPENDENCIES_STR
 	)
 }

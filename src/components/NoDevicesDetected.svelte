@@ -14,6 +14,9 @@
 		<p class="mb-2">{$t("no_devices_detected.check_connection")}</p>
 		{#if buildInfo?.split("</summary>")[0]?.includes("linux")}
 			<p class="mb-2">{$t("no_devices_detected.check_udev")}</p>
+			{#if buildInfo?.toLowerCase().includes("steamos") || buildInfo?.toLowerCase().includes("holo")}
+				<p class="mb-2">{$t("no_devices_detected.steamos")}</p>
+			{/if}
 		{/if}
 		<p class="mb-4">{$t("no_devices_detected.install_plugin")}</p>
 		<button

@@ -53,6 +53,44 @@ pub fn config_dir() -> std::path::PathBuf {
 	app_handle.path().app_config_dir().unwrap()
 }
 
+/// One-time migration of OpenDeck config into LinuxDeck when the latter is empty.
+pub fn maybe_migrate_opendeck_config() {
+	let Ok(home) = std::env::var("HOME") else {
+		return;
+	};
+	let dest = config_dir();
+	let dest_has_entries = dest
+		.read_dir()
+		.map(|mut entries| entries.next().is_some())
+		.unwrap_or(false);
+	if dest_has_entries {
+		return;
+	}
+
+	let candidates = [
+		std::path::PathBuf::from(&home).join(".config/opendeck"),
+		std::path::PathBuf::from(&home).join(".var/app/me.amankhanna.opendeck/config/opendeck"),
+	];
+
+	for src in candidates {
+		if !src.is_dir() {
+			continue;
+		}
+		let src_has_entries = src
+			.read_dir()
+			.map(|mut entries| entries.next().is_some())
+			.unwrap_or(false);
+		if !src_has_entries {
+			continue;
+		}
+		log::info!("Migrating OpenDeck config from {} to {}", src.display(), dest.display());
+		if let Err(error) = copy_dir(&src, &dest) {
+			log::error!("Failed to migrate OpenDeck config: {error}");
+		}
+		break;
+	}
+}
+
 /// Get the application log directory.
 pub fn log_dir() -> std::path::PathBuf {
 	let app_handle = crate::APP_HANDLE.get().unwrap();

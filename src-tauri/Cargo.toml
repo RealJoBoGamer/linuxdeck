@@ -1,11 +1,11 @@
 [package]
-name = "opendeck"
+name = "linuxdeck"
 version = "2.14.2"
-description = "Use stream controllers"
-authors = ["Aman Khanna (nekename)"]
+description = "Linux-native Stream Deck host based on OpenDeck"
+authors = ["RealJoBoGamer", "Aman Khanna (nekename)"]
 license = "GPL-3.0-or-later"
-repository = "https://github.com/nekename/OpenDeck"
-default-run = "opendeck"
+repository = "https://github.com/RealJoBoGamer/linuxdeck"
+default-run = "linuxdeck"
 edition = "2024"
 
 [build-dependencies]
@@ -36,9 +36,8 @@ tauri-plugin-log = "2.8"
 tauri-plugin-cors-fetch = "4.2"
 tauri-plugin-single-instance = { version = "2.4", features = ["deep-link"] }
 tauri-plugin-autostart = "2.5"
-tauri-plugin-dialog = "2.6"
-tauri-plugin-deep-link = "2.4"
-tauri-plugin-aptabase = "1.0"
+tauri-plugin-dialog = "=2.6.0"
+tauri-plugin-deep-link = "=2.4.7"
 serde-inline-default = "1.0"
 serde_with = "3.16"
 json-patch = "4.1"

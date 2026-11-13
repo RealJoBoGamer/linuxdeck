@@ -12,23 +12,23 @@
 		"resources": { "target/plugins/": "plugins/" },
 		"linux": {
 			"deb": {
-				"desktopTemplate": "bundle/opendeck.desktop",
+				"desktopTemplate": "bundle/linuxdeck.desktop",
 				"files": {
 					"/etc/udev/rules.d/40-streamdeck.rules": "bundle/40-streamdeck.rules",
-					"/usr/share/metainfo/opendeck.metainfo.xml": "bundle/opendeck.metainfo.xml"
+					"/usr/share/metainfo/linuxdeck.metainfo.xml": "bundle/linuxdeck.metainfo.xml"
 				}
 			},
 			"rpm": {
-				"desktopTemplate": "bundle/opendeck.desktop",
+				"desktopTemplate": "bundle/linuxdeck.desktop",
 				"files": {
 					"/etc/udev/rules.d/40-streamdeck.rules": "bundle/40-streamdeck.rules",
-					"/usr/share/metainfo/opendeck.metainfo.xml": "bundle/opendeck.metainfo.xml"
+					"/usr/share/metainfo/linuxdeck.metainfo.xml": "bundle/linuxdeck.metainfo.xml"
 				}
 			}
 		},
-		"publisher": "Aman Khanna (nekename)",
-		"shortDescription": "Use stream controllers",
-		"longDescription": "OpenDeck is a desktop application for using stream controller devices like the Elgato Stream Deck. OpenDeck supports plugins made for the original Stream Deck SDK, allowing many plugins made for the Elgato software ecosystem to be used.",
+		"publisher": "RealJoBoGamer",
+		"shortDescription": "Linux-native Stream Deck host",
+		"longDescription": "LinuxDeck is a fork of OpenDeck: a desktop application for using stream controller devices like the Elgato Stream Deck on Linux. It supports plugins made for the original Stream Deck SDK, with SteamOS / Steam Deck focused packaging and docs.",
 		"category": "Productivity",
 		"icon": ["icons/icon.png", "icons/icon.icns", "icons/icon.ico"],
 		"macOS": {
@@ -36,20 +36,20 @@
 			"signingIdentity": "-"
 		}
 	},
-	"productName": "OpenDeck",
-	"mainBinaryName": "opendeck",
-	"identifier": "opendeck",
+	"productName": "LinuxDeck",
+	"mainBinaryName": "linuxdeck",
+	"identifier": "linuxdeck",
 	"plugins": {
 		"deep-link": {
 			"desktop": {
-				"schemes": ["opendeck", "openaction", "streamdeck"]
+				"schemes": ["linuxdeck", "opendeck", "openaction", "streamdeck"]
 			}
 		}
 	},
 	"app": {
 		"windows": [
 			{
-				"title": "OpenDeck",
+				"title": "LinuxDeck",
 				"fullscreen": false,
 				"resizable": true,
 				"width": 800,
