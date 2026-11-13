@@ -54,6 +54,23 @@ distrobox enter archbuild -- bash -lc '
 
 Binary output is under `src-tauri/target/release/linuxdeck` (and bundle artifacts under `src-tauri/target/release/bundle/`).
 
+## Official Elgato plugins on Linux
+
+LinuxDeck runs normal Stream Deck SDK plugins (not only OpenDeck-specific ones):
+
+| Plugin type | Needs | How LinuxDeck runs it |
+|-------------|--------|------------------------|
+| Linux binary (`CodePathLin`) | — | Native process |
+| Node.js (`.js` / `.mjs` / `.cjs`) | **Node.js 20+** on PATH (nvm/fnm OK) | Host `node` |
+| Windows-only (`.exe`) | **Wine + Wine Mono** | Wine + shared prefix mimicking `%AppData%\Elgato\StreamDeck\Plugins` |
+
+Tips:
+
+- Install plugins via the in-app Plugins UI (`.streamDeckPlugin` / marketplace zip) or drop a `*.sdPlugin` folder into `~/.config/linuxdeck/plugins/`.
+- Settings → **Elgato plugin runtimes** shows whether Wine/Node were found.
+- Prefer the shared Wine prefix (default) so plugins that probe Elgato’s Windows AppData paths keep working.
+- Flatpak builds must use **host** Wine/Node (not Flatpak Wine/Node).
+
 ## Upstream
 
 - OpenDeck by Aman Khanna (nekename): https://github.com/nekename/OpenDeck

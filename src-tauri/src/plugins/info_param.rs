@@ -88,7 +88,8 @@ pub async fn make_info(uuid: String, version: String, wine: bool) -> Info {
 			},
 			platform: if !wine { platform.to_owned() } else { "windows".to_owned() },
 			platformVersion: if !wine { os_info::get().version().to_string() } else { "10.0.19045.4474".to_owned() },
-			version: "7.1.0".to_owned(),
+			// Report a recent official Stream Deck app version so SDK plugins enable modern APIs.
+			version: "7.5.0".to_owned(),
 		},
 		plugin: PluginInfo { uuid, version },
 		devicePixelRatio: 0,

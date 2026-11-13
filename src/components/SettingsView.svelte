@@ -18,7 +18,18 @@
 
 	let showPopup: boolean;
 	let buildInfo: string;
-	(async () => (buildInfo = await invoke("get_build_info")))();
+	let runtimeStatus: {
+		wine: string | null;
+		wine_ok: boolean;
+		node: string | null;
+		node_ok: boolean;
+		wine_prefix: string;
+		hint: string;
+	} | null = null;
+	(async () => {
+		buildInfo = await invoke("get_build_info");
+		runtimeStatus = await invoke("get_plugin_runtime_status");
+	})();
 
 	listen("device_brightness", ({ payload }: { payload: { action: string; value: number } }) => {
 		if (!$settings) return;
@@ -149,6 +160,18 @@
 		</div>
 
 		{#if !buildInfo?.split("</summary>")[0]?.includes("windows")}
+			{#if runtimeStatus}
+				<div class="mx-2 mb-3 p-2 text-xs text-neutral-300 bg-neutral-800 border border-neutral-700 rounded-lg space-y-1">
+					<p class="font-semibold text-neutral-200">{$t("settings.plugin_runtime.title")}</p>
+					<p>
+						Wine: {#if runtimeStatus.wine_ok}<span class="text-green-400">{$t("settings.plugin_runtime.ok")}</span> ({runtimeStatus.wine}){:else}<span class="text-amber-400">{$t("settings.plugin_runtime.missing")}</span>{/if}
+					</p>
+					<p>
+						Node.js: {#if runtimeStatus.node_ok}<span class="text-green-400">{$t("settings.plugin_runtime.ok")}</span> ({runtimeStatus.node}){:else}<span class="text-amber-400">{$t("settings.plugin_runtime.missing")}</span>{/if}
+					</p>
+					<p class="text-neutral-400">{runtimeStatus.hint}</p>
+				</div>
+			{/if}
 			<div class="flex flex-row items-center m-2 space-x-2">
 				<label for="settings-separatewine" class="text-neutral-400">{$t("settings.separatewine")}</label>
 				<input type="checkbox" bind:checked={$settings.separatewine} id="settings-separatewine" />

@@ -95,6 +95,7 @@ async fn main() {
 			frontend::property_inspector::switch_property_inspector,
 			frontend::property_inspector::open_url,
 			frontend::plugins::list_plugins,
+			frontend::plugins::get_plugin_runtime_status,
 			frontend::plugins::install_plugin,
 			frontend::plugins::remove_plugin,
 			frontend::plugins::reload_plugin,

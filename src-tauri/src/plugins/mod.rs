@@ -1,5 +1,6 @@
 pub mod info_param;
 pub mod manifest;
+pub mod runtime;
 mod webserver;
 
 use crate::APP_HANDLE;
@@ -7,6 +8,7 @@ use crate::built_info::TARGET;
 use crate::shared::{CATEGORIES, Category, config_dir, convert_icon, is_flatpak, log_dir};
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::{LazyLock, mpsc};
 use std::{fs, path};
@@ -161,12 +163,12 @@ pub async fn initialise_plugin(path: path::PathBuf, spawner_tx: mpsc::Sender<Spa
 	#[cfg(target_os = "linux")]
 	let platform = "linux";
 
-	let mut code_path = manifest.code_path;
+	let mut code_path = manifest.code_path.clone();
 	let mut use_wine = false;
 	let mut supported = false;
 
 	// Determine the method used to run the plugin based on its supported operating systems and the current operating system.
-	for os in manifest.os {
+	for os in &manifest.os {
 		if os.platform == platform {
 			#[cfg(target_os = "windows")]
 			if manifest.code_path_windows.is_some() {
@@ -174,13 +176,13 @@ pub async fn initialise_plugin(path: path::PathBuf, spawner_tx: mpsc::Sender<Spa
 			}
 			#[cfg(target_os = "macos")]
 			if manifest.code_path_macos.is_some() {
-				code_path = manifest.code_path_macos;
+				code_path = manifest.code_path_macos.clone();
 			}
 			#[cfg(target_os = "linux")]
 			if manifest.code_path_linux.is_some() {
-				code_path = manifest.code_path_linux;
+				code_path = manifest.code_path_linux.clone();
 			}
-			code_path = manifest.code_paths.and_then(|p| p.get(TARGET).cloned()).or(code_path);
+			code_path = manifest.code_paths.as_ref().and_then(|p| p.get(TARGET).cloned()).or(code_path);
 
 			use_wine = false;
 
@@ -193,7 +195,19 @@ pub async fn initialise_plugin(path: path::PathBuf, spawner_tx: mpsc::Sender<Spa
 	}
 
 	if code_path.is_none() && use_wine {
-		code_path = manifest.code_path_windows;
+		code_path = manifest.code_path_windows.clone().or(manifest.code_path.clone());
+	}
+
+	// Official Elgato plugins often declare linux support but only ship a Windows .exe.
+	// Detect that and force the Wine runtime instead of a broken native spawn.
+	if cfg!(target_os = "linux")
+		&& code_path.as_ref().is_some_and(|p| runtime::is_windows_code_path(p))
+	{
+		use_wine = true;
+		supported = true;
+		if let Some(win) = manifest.code_path_windows.clone() {
+			code_path = Some(win);
+		}
 	}
 
 	if !supported || code_path.is_none() {
@@ -244,12 +258,25 @@ pub async fn initialise_plugin(path: path::PathBuf, spawner_tx: mpsc::Sender<Spa
 
 		INSTANCES.lock().await.insert(plugin_uuid, PluginInstance::Webview);
 	} else if code_path.to_lowercase().ends_with(".js") || code_path.to_lowercase().ends_with(".mjs") || code_path.to_lowercase().ends_with(".cjs") {
-		// Check for Node.js installation and version in one go.
-		let command = if is_flatpak() { "flatpak-spawn" } else { "node" };
-		let extra_args = if is_flatpak() { vec!["--host", "node"] } else { vec![] };
-		let version_output = Command::new(command).args(&extra_args).arg("--version").output();
-		if version_output.is_err() || String::from_utf8(version_output.unwrap().stdout).unwrap().trim() < "v20.0.0" {
-			return Err(anyhow!("Node.js version 20.0.0 or higher is required"));
+		let node_bin = if is_flatpak() {
+			PathBuf::from("flatpak-spawn")
+		} else {
+			runtime::require_node()?
+		};
+		let extra_args: Vec<String> = if is_flatpak() {
+			vec!["--host".to_owned(), "node".to_owned()]
+		} else {
+			vec![]
+		};
+		if is_flatpak() {
+			let version_output = Command::new("flatpak-spawn").args(["--host", "node", "--version"]).output();
+			let version = version_output
+				.ok()
+				.and_then(|o| String::from_utf8(o.stdout).ok())
+				.unwrap_or_default();
+			if version.trim().trim_start_matches('v') < "20.0.0" {
+				return Err(anyhow!("Node.js version 20.0.0 or higher is required on the host"));
+			}
 		}
 
 		let info = info_param::make_info(plugin_uuid.to_owned(), manifest.version, true).await;
@@ -257,10 +284,10 @@ pub async fn initialise_plugin(path: path::PathBuf, spawner_tx: mpsc::Sender<Spa
 
 		spawner_tx
 			.send(Box::new(move || {
-				let mut command = Command::new(command);
+				let mut command = Command::new(&node_bin);
 				command
 					.current_dir(path)
-					.args(extra_args)
+					.args(&extra_args)
 					.arg(code_path)
 					.args(args)
 					.arg(serde_json::to_string(&info)?)
@@ -277,18 +304,42 @@ pub async fn initialise_plugin(path: path::PathBuf, spawner_tx: mpsc::Sender<Spa
 			}))
 			.map_err(|e| anyhow!(e.to_string()))?;
 	} else if use_wine {
-		let command = if is_flatpak() { "flatpak-spawn" } else { "wine" };
-		let extra_args = if is_flatpak() { vec!["--host", "wine"] } else { vec![] };
-		let result = Command::new(command)
-			.args(&extra_args)
-			.arg("--version")
-			.stdout(Stdio::null())
-			.stderr(Stdio::null())
-			.spawn()
-			.and_then(|mut child| child.wait())
-			.map(|status| status.success());
-		if !matches!(result, Ok(true)) {
-			return Err(anyhow!("failed to detect an installation of Wine"));
+		let wine_bin = if is_flatpak() {
+			PathBuf::from("flatpak-spawn")
+		} else {
+			runtime::require_wine()?
+		};
+		let extra_args: Vec<String> = if is_flatpak() {
+			let host_wine = runtime::find_wine()
+				.map(|p| p.display().to_string())
+				.unwrap_or_else(|| "wine".to_owned());
+			vec!["--host".to_owned(), host_wine]
+		} else {
+			vec![]
+		};
+		if is_flatpak() {
+			let probe = Command::new("flatpak-spawn")
+				.args(["--host", "wine", "--version"])
+				.stdout(Stdio::null())
+				.stderr(Stdio::null())
+				.status();
+			if !matches!(probe, Ok(status) if status.success()) {
+				return Err(anyhow!(
+					"Wine not found on host. Install Wine (+ Wine Mono) natively for Windows Elgato plugins."
+				));
+			}
+		}
+
+		let prefix = if crate::store::get_settings().value.separatewine {
+			path.join("wineprefix")
+		} else {
+			let _ = fs::remove_dir_all(path.join("wineprefix"));
+			runtime::shared_wine_prefix()
+		};
+		if !is_flatpak()
+			&& let Err(error) = runtime::ensure_elgato_wine_layout(&wine_bin, &prefix, &config_dir().join("plugins"))
+		{
+			warn!("Failed to prepare Elgato Wine layout: {error:#}");
 		}
 
 		let info = info_param::make_info(plugin_uuid.to_owned(), manifest.version, true).await;
@@ -296,20 +347,16 @@ pub async fn initialise_plugin(path: path::PathBuf, spawner_tx: mpsc::Sender<Spa
 
 		spawner_tx
 			.send(Box::new(move || {
-				let mut command = Command::new(command);
+				let mut command = Command::new(&wine_bin);
 				command
 					.current_dir(&path)
-					.args(extra_args)
+					.args(&extra_args)
 					.arg(code_path)
 					.args(args)
 					.arg(serde_json::to_string(&info)?)
 					.stdout(Stdio::from(log_file.try_clone()?))
 					.stderr(Stdio::from(log_file));
-				if crate::store::get_settings().value.separatewine {
-					command.env("WINEPREFIX", path.join("wineprefix").to_string_lossy().to_string());
-				} else {
-					let _ = fs::remove_dir_all(path.join("wineprefix"));
-				}
+				runtime::apply_wine_env(&mut command, &prefix);
 				#[cfg(target_os = "linux")]
 				attach_parent_death_signal(&mut command);
 				Ok((plugin_uuid, PluginChildType::Wine, command))
@@ -452,6 +499,17 @@ pub fn initialise_plugins() {
 
 	let (tx, rx) = mpsc::channel::<SpawnRequest>();
 	APP_HANDLE.get().unwrap().manage(tx.clone());
+
+	// Prepare shared Wine prefix + Elgato AppData mirror before Windows plugins start.
+	if cfg!(target_os = "linux")
+		&& !is_flatpak()
+		&& let Some(wine) = runtime::find_wine()
+	{
+		let prefix = runtime::shared_wine_prefix();
+		if let Err(error) = runtime::ensure_elgato_wine_layout(&wine, &prefix, &plugin_dir) {
+			warn!("Failed to prepare shared Elgato Wine layout: {error:#}");
+		}
+	}
 
 	// Use a dedicated spawner thread so that plugin processes don't die due to PR_SET_PDEATHSIG when the parent Tokio worker exits
 	std::thread::spawn(|| {

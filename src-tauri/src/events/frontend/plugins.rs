@@ -22,6 +22,11 @@ pub struct PluginInfo {
 }
 
 #[command]
+pub async fn get_plugin_runtime_status() -> crate::plugins::runtime::PluginRuntimeStatus {
+	crate::plugins::runtime::runtime_status()
+}
+
+#[command]
 pub async fn list_plugins(app: AppHandle) -> Result<Vec<PluginInfo>, Error> {
 	let mut plugins = vec![];
 
@@ -120,6 +125,16 @@ pub async fn install_plugin(app: AppHandle, url: Option<String>, file: Option<St
 		return Err(error.into());
 	}
 	let _ = fs::remove_dir_all(config_dir.join("temp")).await;
+
+	// Keep Wine's Elgato\StreamDeck\Plugins mirror in sync for Windows plugins.
+	if let Some(wine) = crate::plugins::runtime::find_wine() {
+		let prefix = if crate::store::get_settings().value.separatewine {
+			actual.join("wineprefix")
+		} else {
+			crate::plugins::runtime::shared_wine_prefix()
+		};
+		let _ = crate::plugins::runtime::ensure_elgato_wine_layout(&wine, &prefix, &config_dir.join("plugins"));
+	}
 
 	Ok(())
 }
